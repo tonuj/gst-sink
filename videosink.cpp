@@ -29,7 +29,7 @@ VideoSink::VideoSink(const char *pipeline, gint w, gint h)
                                      "format", G_TYPE_STRING, "RGB",
                                      "width", G_TYPE_INT, w,
                                      "height", G_TYPE_INT, h,
-                                     "framerate", GST_TYPE_FRACTION, 25, 1,
+                                    //  "framerate", GST_TYPE_FRACTION, 25, 1,
                                      NULL),
                  NULL);
 
