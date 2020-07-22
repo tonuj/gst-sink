@@ -26,7 +26,7 @@ VideoSink::VideoSink(const char *pipeline, gint w, gint h)
     /* setup */
     g_object_set(G_OBJECT(_appsrc), "caps",
                  gst_caps_new_simple("video/x-raw",
-                                     "format", G_TYPE_STRING, "I420",
+                                     "format", G_TYPE_STRING, "RGB",
                                      "width", G_TYPE_INT, w,
                                      "height", G_TYPE_INT, h,
                                      "framerate", GST_TYPE_FRACTION, 25, 1,
