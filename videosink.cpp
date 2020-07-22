@@ -69,7 +69,6 @@ void VideoSink::start() {
 
 void VideoSink::stop() {
     gst_element_send_event(_pipeline, gst_event_new_eos());
-    g_main_loop_quit(_loop);
 
     thread.join();
 }
@@ -123,7 +122,7 @@ VideoSink::cb_bus(GstBus *bus, GstMessage *message, gpointer data) {
             break;
         }
         case GST_MESSAGE_EOS:
-            g_print("Got EOS");
+            g_print("Got EOS... quitting.\n");
             g_main_loop_quit(ctx->_loop);
             break;
         default:
