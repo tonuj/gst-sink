@@ -9,6 +9,7 @@
 
 const int width = 1920;
 const int height = 1080;
+const int fps = 50;
 
 const int n_test_samples = 50;
 
@@ -30,22 +31,30 @@ gint main(gint argc, gchar *argv[]) {
         }
     }
 
+{
+    VideoSink sink("appsrc name=src ! videoconvert ! autovideosink sync=false", width, height, "RGB");
+}
     /* *** Uncomment one line below to test different pipelines. Pipeline must start with "appsrc name=src". *** */
     /* --- */
-    // VideoSink sink("appsrc name=src ! videoconvert ! queue ! nvh265enc ! queue ! h265parse ! queue ! mpegtsmux ! filesink location=test.ts", width, height);
-    // VideoSink sink("appsrc name=src ! videoconvert ! queue ! nvh265enc ! queue ! h265parse ! queue ! mp4mux ! filesink location=test.mp4", width, height);
-    VideoSink sink("appsrc name=src ! videoconvert ! autovideosink sync=false", width, height);
+    // VideoSink sink("appsrc name=src ! videoconvert ! autovideosink sync=false", width, height, "RGB");
+    VideoSink sink("appsrc name=src ! videoconvert ! queue ! nvh265enc ! queue ! h265parse ! queue ! mpegtsmux ! filesink location=test.ts", width, height, "RGB");
+    // VideoSink sink("appsrc name=src ! videoconvert ! queue ! nvh265enc ! queue ! h265parse ! queue ! mp4mux ! filesink location=test.mp4", width, height, "RGB");
 
     // starts sink (in a thread)
     sink.start();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     // start feeding sink with some frames
     int frame = 0;
     while (!quit) {
         sink.push(testbuf[frame], width * height * 3);
 
+        if (frame == n_test_samples - 1)
+            sink.flush();
+
         frame = ++frame % n_test_samples;
-        std::this_thread::sleep_for(std::chrono::milliseconds(40));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000 / fps));
     }
 
     sink.stop();

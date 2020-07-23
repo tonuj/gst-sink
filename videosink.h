@@ -5,11 +5,12 @@
 
 class VideoSink {
    public:
-    VideoSink(const char * pipeline, gint w, gint h);
+    VideoSink(const char * pipeline, gint width, gint height, const char *format = "RGB");
     ~VideoSink();
 
     void start();
     void push(void *data, guint sz);
+    void flush();
     void stop();
 
    private:

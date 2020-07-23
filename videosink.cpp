@@ -1,6 +1,6 @@
 #include "videosink.h"
 
-VideoSink::VideoSink(const char *pipeline, gint w, gint h)
+VideoSink::VideoSink(const char *pipeline, gint width, gint height, const char *format)
     : _loop(NULL),
       _want(0) {
     GstBus *bus;
@@ -11,9 +11,9 @@ VideoSink::VideoSink(const char *pipeline, gint w, gint h)
 
     /* setup pipeline */
     _pipeline = gst_parse_launch(pipeline, &error);
-    if (!_pipeline) {
-        g_print("Parse error: %s\n", error->message);
-        throw;
+
+    if (_pipeline && error != NULL && error->code) {
+        GST_ERROR_OBJECT(_pipeline, "Parse error: %s\n", error->message);
     }
 
     _appsrc = gst_bin_get_by_name(GST_BIN(_pipeline), "src");
@@ -26,10 +26,9 @@ VideoSink::VideoSink(const char *pipeline, gint w, gint h)
     /* setup */
     g_object_set(G_OBJECT(_appsrc), "caps",
                  gst_caps_new_simple("video/x-raw",
-                                     "format", G_TYPE_STRING, "RGB",
-                                     "width", G_TYPE_INT, w,
-                                     "height", G_TYPE_INT, h,
-                                    //  "framerate", GST_TYPE_FRACTION, 25, 1,
+                                     "format", G_TYPE_STRING, format,
+                                     "width", G_TYPE_INT, width,
+                                     "height", G_TYPE_INT, height,
                                      NULL),
                  NULL);
 
@@ -46,6 +45,7 @@ VideoSink::VideoSink(const char *pipeline, gint w, gint h)
 VideoSink::~VideoSink() {
     gst_element_set_state(_pipeline, GST_STATE_NULL);
     gst_object_unref(GST_OBJECT(_pipeline));
+    gst_object_unref(GST_OBJECT(_appsrc));
     g_source_remove(_bus_watch_id);
 }
 
@@ -96,17 +96,23 @@ void VideoSink::push(void *data, guint sz) {
     }
 }
 
-gboolean
-VideoSink::cb_bus(GstBus *bus, GstMessage *message, gpointer data) {
+void VideoSink::flush() {
+    if (!gst_element_send_event(GST_ELEMENT(_pipeline), gst_event_new_flush_start()))
+        GST_WARNING_OBJECT(_pipeline, "failed to send flush-start event");
+
+    if (!gst_element_send_event(GST_ELEMENT(_pipeline), gst_event_new_flush_stop(false)))
+        GST_WARNING_OBJECT(_pipeline, "failed to send flush-stop event");
+}
+
+gboolean VideoSink::cb_bus(GstBus *bus, GstMessage *message, gpointer data) {
+    VideoSink *ctx = static_cast<VideoSink *>(data);
     GError *err;
     gchar *debug;
-
-    VideoSink *ctx = static_cast<VideoSink *>(data);
 
     switch (GST_MESSAGE_TYPE(message)) {
         case GST_MESSAGE_ERROR: {
             gst_message_parse_error(message, &err, &debug);
-            g_print("Error: %s\n", err->message);
+            GST_ERROR_OBJECT(ctx->_pipeline, "Error: %s\n", err->message);
             g_error_free(err);
             g_free(debug);
 
@@ -115,18 +121,18 @@ VideoSink::cb_bus(GstBus *bus, GstMessage *message, gpointer data) {
         }
         case GST_MESSAGE_WARNING: {
             gst_message_parse_warning(message, &err, &debug);
-            g_print("Warning: %s\n", err->message);
+            GST_WARNING_OBJECT(ctx->_pipeline, "Warning: %s\n", err->message);
             g_error_free(err);
             g_free(debug);
 
             break;
         }
         case GST_MESSAGE_EOS:
-            g_print("Got EOS... quitting.\n");
+            GST_INFO_OBJECT(ctx->_pipeline, "Got EOS... quitting.\n");
             g_main_loop_quit(ctx->_loop);
             break;
         default:
-            g_print("Got message of type: %s\n", GST_MESSAGE_TYPE_NAME(message));
+            // g_print("Got message of type: %s\n", GST_MESSAGE_TYPE_NAME(message));
             break;
     }
 
